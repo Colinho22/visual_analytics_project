@@ -1,1 +1,1 @@
-# visual_analytics_project
+# Visual Analytics Project
