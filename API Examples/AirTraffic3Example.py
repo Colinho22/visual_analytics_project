@@ -11,6 +11,7 @@ import datetime
 #URL mit Switzerland Bounding Box
 url =  "https://opensky-network.org/api/states/all?lamin=45.8389&lomin=5.9962&lamax=47.8229&lomax=10.5226"
 flightData = pd.read_json(url)
+print(flightData)
 timestamp = flightData['time']
 
 print(datetime.datetime.fromtimestamp(int(timestamp[0])).strftime('%Y-%m-%d %H:%M:%S'))
@@ -19,9 +20,6 @@ print(datetime.datetime.fromtimestamp(int(timestamp[0])).strftime('%Y-%m-%d %H:%
 
 #URL to state Components
 #https://openskynetwork.github.io/opensky-api/rest.html#flights-by-aircraft
-
-
-
 
 
 
