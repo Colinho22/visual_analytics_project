@@ -12,6 +12,7 @@ from api import airTraffic_API as a_Api
 
 # Erstelle eine Dash-Anwendung
 app = dash.Dash(__name__)
+server = app.server
 
 # Beispiel-Daten für die Karte (Koordinaten)
 data = px.data.carshare()
