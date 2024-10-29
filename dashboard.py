@@ -2,7 +2,6 @@ import dash
 from dash import dcc, html, callback
 from dash.dependencies import Input, Output
 import plotly.express as px
-#import plotly.graph_objs as go
 import plotly.graph_objects as go
 import airportsdata
 import pandas as pd
@@ -113,9 +112,10 @@ def genFig2(weatherData, flightData, lat, lon):
         lon=[-73.5673, -71.2082, -79.3832], # Example longitudes
         mode='markers+text',
         marker=go.scattermapbox.Marker(
-            #size=100,        # Custom size for all markers
-            #color='red',   # Marker color
-            symbol='airports',   # Custom symbol
+            size=30,        # Custom size for all markers
+            color='red',   # Marker color
+            #symbol='airports',   # Custom symbol
+            symbol='circle',  # Custom symbol
 
             ##SYMBOL geht nur mit mapbox provided style
 
