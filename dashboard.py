@@ -7,6 +7,8 @@ import airportsdata
 import pandas as pd
 import numpy as np
 
+import gunicorn.app.base
+
 from api import weather_API as w_Api
 from api import airTraffic_API as a_Api
 
