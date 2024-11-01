@@ -6,8 +6,11 @@ import plotly.graph_objects as go
 import airportsdata
 import pandas as pd
 import numpy as np
+import dash_leaflet as dl
+import dash_leaflet.express as dlx
 
-import gunicorn.app.base
+
+import gunicorn
 
 from api import weather_API as w_Api
 from api import airTraffic_API as a_Api
@@ -48,10 +51,7 @@ def createData(center_lat, center_lon):
         for j in b:
             x = w_Api.getWeatherDangerIndex(i,j)
             weatherData.append([i,j,x])
-
-    #print(weatherData)
-    flightData = a_Api.getAirTraffic(min_lat, min_lon, max_lat, max_lon)
-    #print(flightData)
+    flightData = a_Api.getAirTrafficDicts(min_lat, min_lon, max_lat, max_lon)   #Output as List of JSON
 
     return weatherData, flightData
 
@@ -63,96 +63,13 @@ def getLatLongFromName(name):
     return lat, lon
 
 def genFig(weatherData, flightData, lat, lon):
-    # Erstelle die Karte mit Plotly und Mapbox
-    fig = px.scatter_mapbox(
-        flightData, lat="lat", lon="lon",
-        #size="peak_hour",
-        zoom=11,
-        center={"lat": lat, "lon": lon},
-        mapbox_style="open-street-map",  # Alternative Styles: "carto-positron", "stamen-terrain", "open-street-map"
-        hover_name="callsign",
-    )
-    fig.update_layout(
-        margin={"r": 0, "t": 0, "l": 0, "b": 0},
-    )
+    map = dl.Map([
+        dl.TileLayer(),
+        # From in-memory geojson. All markers at same point forces spiderfy at any zoom level.
+        dl.GeoJSON(data=dlx.dicts_to_geojson(flightData), cluster=True, zoomToBoundsOnClick=True),
+        ], center=(lat, lon), zoom=11, style={'height': '80vh'})
 
-    fig.update_traces(marker=dict(
-        color='red',  # Set marker color
-        opacity=0.7,  # Set marker opacity
-        sizeref=100,  # Adjusts size scaling factor
-        size=100
-    ))
-
-    return fig
-
-def genFig1(weatherData, flightData, lat, lon):
-    ##########################
-    #NO DETAILVIEW!!!
-    ##########################
-    fig = go.Figure(go.Scattergeo(
-        lat=[lat],
-        lon=[lon],
-        mode='markers',
-        marker=dict(size=10, color='red'),
-        #text=['Location']
-    ))
-
-    fig.update_layout(
-        geo=dict(
-            scope='world',  # Choose the scope (world, usa, etc.)
-            projection_type='orthographic', #'natural earth',  # Projection type
-            showland=True,  # Show land features
-            landcolor='lightgray'
-        ),
-        margin={'l': 0, 'r': 0, 't': 0, 'b': 0}
-    )
-
-    return fig
-
-def genFig2(weatherData, flightData, lat, lon):
-    fig = go.Figure(go.Scattermapbox(
-        lat=[45.5017, 46.8139, 43.6532],   # Example latitudes
-        lon=[-73.5673, -71.2082, -79.3832], # Example longitudes
-        mode='markers+text',
-        marker=go.scattermapbox.Marker(
-            size=30,        # Custom size for all markers
-            color='red',   # Marker color
-            #symbol='airports',   # Custom symbol
-            symbol='circle',  # Custom symbol
-
-            ##SYMBOL geht nur mit mapbox provided style
-
-            #Kommentar
-            # It's important to note that the special icon symbols only work when using a
-            # Mapbox-provided style, per the documentation: https://plotly.com/python/scattermapbox/#set-marker-symbols
-
-            ##Die Mapbox Styles (basic,streets, outdoors, light, dark, satellite, satellite-streets) könnten
-            #unten im Update unter der style Variable gesetzt werden. Dies wiederum geht aber NUR MIT MAPBOX TOKEN
-
-            #Links:
-            #Icons: https://labs.mapbox.com/maki-icons/
-            #How to set marker symbols: https://plotly.com/python/tile-scatter-maps/
-            #Issue mit Infos: https://github.com/plotly/plotly.py/issues/1804
-
-
-            angle= 20
-        ),
-        text=['Montreal', 'Quebec City', 'Toronto'],  # Labels for markers
-        textposition="bottom right"  # Position labels near markers
-    ))
-
-    # Configure map layout without a token
-    fig.update_layout(
-        mapbox=dict(
-            style="open-street-map",#style="basic",
-            center=dict(lat=45.5017, lon=-73.5673),
-            zoom=5
-        ),
-        margin={'l': 0, 'r': 0, 't': 0, 'b': 0}
-    )
-
-    return fig
-
+    return map
 
 lat, lon = getLatLongFromName('Zurich Airport')
 weatherData, flightData =createData(lat, lon)
@@ -160,29 +77,20 @@ weatherData, flightData =createData(lat, lon)
 
 # Layout für die Dash-App
 app.layout = html.Div([
+    html.Div("Bitte Flughafen auswählen", style={'text-align': 'center', 'font-size': 'xx-large', "margin-bottom": "15px"}),
     dcc.Dropdown(airp['name'], 'Zurich Airport', id='airport-dropdown', searchable=True),
-    html.H1("Interaktive Karte mit Zoom und Pan-Funktion"),
-    dcc.Graph(id="map", figure=genFig2(weatherData, flightData, lat, lon)),
-    html.Div("hello", id='dd-output-container')
+    html.Div([genFig(weatherData, flightData, lat, lon)], id="map", style={"margin-left": "15px", "margin-right": "15px","margin-top": "15px", "margin-bottom": "15px"}),
 ])
 
 @callback(
-    Output('map', 'figure'),
+    Output('map', 'children'),
     Input('airport-dropdown', 'value')
 )
 def update_output(value):
     lat, lon = getLatLongFromName(value)
     weatherData, flightData = createData(lat, lon)
-    fig = genFig2(weatherData, flightData, lat, lon)
+    fig = [genFig(weatherData, flightData, lat, lon)]
     return fig
-
-@callback(
-    Output('dd-output-container', 'children'),
-    Input('airport-dropdown', 'value')
-)
-def update_output(value):
-    lat, lon = getLatLongFromName(value)
-    return f'You have selected {value}, lat: {lat}, lon: {lon}'
 
 
 # Starte die Dash-Anwendung

@@ -32,5 +32,34 @@ def getAirTraffic(lamin, lomin, lamax, lomax):
     return dataDf
 
 
+def getAirTrafficDicts(lamin, lomin, lamax, lomax):
+    catIndex = ['No information', 'No ADS-B Emitter Category Information', 'Light (< 15500 lbs)',
+                'Small (15500 to 75000 lbs)', 'Large (75000 to 300000 lbs)',
+                'High Vortex Large (aircraft such as B-757)',
+                'Heavy (> 300000 lbs)', 'High Performance (> 5g acceleration and 400 kts)', 'Rotorcraft',
+                'Glider / sailplane', 'Lighter-than-air', 'Parachutist / Skydiver',
+                'Ultralight / hang-glider / paraglider',
+                'Reserved', 'Unmanned Aerial Vehicle', 'Space / Trans-atmospheric vehicle',
+                'Surface Vehicle – Emergency Vehicle',
+                'Surface Vehicle – Service Vehicle', 'Point Obstacle (includes tethered balloons)', 'Cluster Obstacle',
+                'Line Obstacle']
+
+
+    url = f"https://opensky-network.org/api/states/all?lamin={lamin}&lomin={lomin}&lamax={lamax}&lomax={lomax}"
+    try:
+        flightData = pd.read_json(url)
+    except Exception as e:
+        #return empty Dataframe
+        return pd.DataFrame(columns=['callsign', 'originCountry', 'lon', 'lat', 'alt', 'vel', 'dir', 'cat'])
+
+    data = []
+    for i in flightData['states']:
+        data.append(dict(callsign=i[1], originCountry=i[2], lat=float(i[6]), lon=float(i[5]), alt=i[7], vel=i[9], dir=i[10], cat=i[16]))
+
+    return data
+
+
+
+
 
 
