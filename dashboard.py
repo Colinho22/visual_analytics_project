@@ -2,7 +2,6 @@ import dash
 from dash import dcc, html, callback
 from dash.dependencies import Input, Output
 import plotly.express as px
-import plotly.graph_objects as go
 import airportsdata
 import pandas as pd
 import numpy as np
@@ -70,6 +69,39 @@ def genFig(weatherData, flightData, lat, lon):
         ], center=(lat, lon), zoom=11, style={'height': '80vh'})
 
     return map
+'''
+
+def genFig(weatherData, flightData, lat, lon):
+    # Funktion zur Erstellung eines individuellen Icons für die Flugzeuge
+    def create_airplane_marker(feature):
+        # Setze den Kurswinkel basierend auf dem 'bearing'-Wert im Feature (falls vorhanden)
+        bearing = feature['dir']  # Default-Winkel ist 0 Grad, falls 'bearing' fehlt
+        icon = {
+            "iconUrl": "/assets/airplane.svg",  # Pfad zum Flugzeugsymbol
+            "iconSize": [32, 32],  # Größe des Icons
+            "iconAnchor": [16, 16],  # Mittelpunkt des Icons
+            "popupAnchor": [0, -16],  # Position für das Popup
+            "rotateAngle": bearing  # Rotation basierend auf Flugrichtung
+        }
+        return dl.Marker(position=feature["geometry"]["coordinates"][::-1], icon=icon)
+
+    # Konvertiere flightData zu GeoJSON und passe die Marker und Rotation an
+    geojson_data = dlx.dicts_to_geojson(flightData)
+
+    # Erstelle die Map-Komponente mit dem angepassten Icon
+    map = dl.Map([
+        dl.TileLayer(),
+        dl.GeoJSON(
+            data=geojson_data,
+            cluster=True,
+            zoomToBoundsOnClick=True,
+            zoomToBounds=True,
+            #options=dict(pointToLayer=create_airplane_marker),  # Verwende benutzerdefinierte Marker
+        ),
+    ], center=(lat, lon), zoom=11, style={'height': '80vh'})
+
+    return map
+'''
 
 lat, lon = getLatLongFromName('Zurich Airport')
 weatherData, flightData =createData(lat, lon)
