@@ -9,7 +9,6 @@ import dash_leaflet.express as dlx
 from sklearn.cluster import KMeans
 
 
-
 import gunicorn
 
 from api import weather_API as w_Api
@@ -191,9 +190,9 @@ app.layout = html.Div(
                 style={
                     'height': '21%',  # 1/4 of the height - 4% so not scrollable
                     'width': '100%',  # Full width of left side (75%)
-                    'background-color': 'lightgreen',  # Optional color for visibility
+                    'background-color': 'lightgray',  # Optional color for visibility
                 },
-                children="Bottom Left Division"
+                children=" "
             )
         ]),
 
@@ -249,7 +248,7 @@ app.layout = html.Div(
                         'box-sizing': 'border-box',
                         'border-radius': '25px'
                     },
-                    children=html.Div("Bottom Division in Right Division", id="temp")
+                    children=""
                 )
             ]
         )
@@ -286,7 +285,6 @@ def updateMapBasedOnMiniMapClick(click_data):
     Input('cont-dd', 'value')
 )
 def update_Minioutput(value):
-    print("hello ", value)
     if value == "Continents":
         fig = genMiniMap(contClusters, 1)
     else:
