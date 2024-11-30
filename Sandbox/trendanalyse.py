@@ -57,7 +57,7 @@ def maxSquaredError(x,y):
     return out
 
 #### Import Data aus csv ####
-data = pd.read_csv('ngdata.csv')
+data = pd.read_csv('https://github.com/Colinho22/visual_analytics_project/blob/main/Sandbox/ngdata.csv')
 data = data.dropna(axis=0, how='any')
 #Daten stammen asu dem Kaggle Datensatz: https://www.kaggle.com/datasets/alistairking/natural-gas-usage
 
