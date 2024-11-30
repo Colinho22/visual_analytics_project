@@ -57,12 +57,12 @@ def maxSquaredError(x,y):
     return out
 
 #### Import Data aus csv ####
-# data = pd.read_csv('ngdata.csv') # fuer lokales deployment
+# data = pd.read_csv('ngdata.csv') # für lokales deployment only
 data = pd.read_csv('https://raw.githubusercontent.com/Colinho22/visual_analytics_project/main/Sandbox/ngdata.csv', #für streamlit online deployment
                    on_bad_lines='skip',  # Falsch formatierte Einträge im CSV werden geskipped
                    encoding='utf-8')     # Encoding um Fehler bei der Interpretation zu verhindern
 data = data.dropna(axis=0, how='any')
-#Daten stammen asu dem Kaggle Datensatz: https://www.kaggle.com/datasets/alistairking/natural-gas-usage
+#Daten stammen aus dem Kaggle Datensatz: https://www.kaggle.com/datasets/alistairking/natural-gas-usage
 
 
 #### Datacleaning ####
