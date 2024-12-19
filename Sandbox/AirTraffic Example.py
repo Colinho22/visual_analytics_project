@@ -46,7 +46,8 @@ Vel = flightData['states'][0][9]
 dir = flightData['states'][0][10]
 
 #17 Category
-#Aircraft category.0 = No information at all,
+#Aircraft category.
+# 0 = No information at all,
 # 1 = No ADS-B Emitter Category Information
 # 2 = Light (< 15500 lbs)
 # 3 = Small (15500 to 75000 lbs)
@@ -72,5 +73,3 @@ cat = flightData['states'][0][16]
 
 
 print(f"{lon}, {lat}, {alt}, {Vel}, {dir}, {cat}")
-
-
