@@ -10,8 +10,7 @@ import dash_leaflet as dl
 import dash_leaflet.express as dlx
 from sklearn.cluster import KMeans
 import plotly.express as px
-import plotly.graph_objs as go
-from plotly.subplots import make_subplots
+import sys
 
 
 import gunicorn
@@ -174,7 +173,7 @@ def genMiniMap(activeClusters, zoom):
     map = dl.Map([
         dl.TileLayer(),
         dl.GeoJSON(data=activeClusters, cluster=True, zoomToBoundsOnClick=True, id = "geojson_layer"),
-        ], center=(0, 4), zoom=zoom, style={'height': '22vh'}, id="miniMap", zoomControl=False)
+        ], center=(0, 4), zoom=zoom, style={'height': '24vh', 'margin-left': '5px','margin-right': '5px','margin-top': '5px'}, id="miniMap", zoomControl=False)
     return map
 
 def generate_grid(weatherData):
@@ -191,60 +190,45 @@ def generate_grid(weatherData):
     return layers
 
 def genCompPlot(flightData):
-    #color_discrete_sequence = PLANE_CATEGORIES,
     flightData = pd.DataFrame.from_dict(flightData)
     flightData = flightData.rename(columns={"alt": "Altitude", "vel": "Velocity", "cat": "Category"})
-    fig = px.scatter(flightData, x="Altitude", y="Velocity", color='Category', hover_name= 'callsign', title="Flight comparisons")
+    fig = px.scatter(flightData, x="Altitude", y="Velocity", color='Category', hover_name= 'callsign', title="Live Flight comparisons")
     fig.update_layout(margin=dict(l=0, r=10, t=35, b=0))
     fig.update_coloraxes(showscale=False)
     return fig
 
-
-def genHistoPlot(startDate, endDate):
-    #EuroAirport Basel-Mulhouse-Freiburg Airport
-    histFlightData = h_Api.getHistoricalFlightData(startDate, endDate)
+def genHistoPlot(startDate, endDate, x_selection, y_selection):
+    if x_selection == "Summe":
+        histFlightData = h_Api.getHistoricalFlightData(startDate, endDate, sum=True)
+    elif x_selection == "Alle":
+        histFlightData = h_Api.getHistoricalFlightData(startDate, endDate, sum=False)
+    else:
+        histFlightData = h_Api.getHistoricalFlightData(startDate, endDate, sum=False)
+        histFlightData = histFlightData[histFlightData["cat"] == x_selection]
     histFlightData['date'] = pd.to_datetime(histFlightData['date'])
+
     histWeatherData = w_Api.getHistWeatherDangerIndex(static_lat, static_lon, startDate, endDate)
     histWeatherData['date'] = pd.to_datetime(histWeatherData['date'])
 
     merge = histFlightData.merge(histWeatherData, on='date')
+    merge = merge.rename(columns={"wind_speed_10m": "Wind Speed", "rain": "Rain", "temperature_2m": "Temperature", "cat": "Category", "mvt": "Plane movements", "index": "Weather danger index", "date": "Date"})
 
-    fig = make_subplots(specs=[[{"secondary_y": True}]])
-
-    # Add traces
-    fig.add_trace(
-        go.Scatter(x= merge['date'], y=merge['mvt'], name="yaxis data"),
-        secondary_y=False,
-    )
-
-    fig.add_trace(
-        go.Scatter(x= merge['date'], y=merge['index'], name="yaxis2 data"),
-        secondary_y=True,
-    )
-
-    # Add figure title
-    fig.update_layout(
-        title_text="Double Y Axis Example"
-    )
-
-    # Set x-axis title
-    fig.update_xaxes(title_text="xaxis title")
-
-    # Set y-axes titles
-    fig.update_yaxes(title_text="<b>primary</b> yaxis title", secondary_y=False)
-    fig.update_yaxes(title_text="<b>secondary</b> yaxis title", secondary_y=True)
-
-    fig.show()
-
-
+    fig = px.scatter(merge, x="Plane movements", y=y_selection, hover_name= 'Date', title="Flight and weather comparison in EuroAirport Basel-Mulhouse-Freiburg Airport")
+    if x_selection == "Alle":
+        fig = px.scatter(merge, x="Plane movements", y=y_selection, color= 'Category', hover_name='Date',title="Flight and weather comparison in EuroAirport Basel-Mulhouse-Freiburg Airport")
+    else:
+        fig = px.scatter(merge, x="Plane movements", y=y_selection, hover_name='Date',title="Flight and weather comparison in EuroAirport Basel-Mulhouse-Freiburg Airport")
+    fig.update_layout(margin=dict(l=0, r=10, t=35, b=0))
+    #fig.show()
+    return fig
 
 
 lat, lon = getLatLongFromName('EuroAirport Basel-Mulhouse-Freiburg Airport')
 static_lat, static_lon  = getLatLongFromName('EuroAirport Basel-Mulhouse-Freiburg Airport')
-
-startDate = '2024-01-01'
-endDate = '2024-04-01'
-genHistoPlot(startDate, endDate)
+xSelList = ['Summe', 'Alle', 'Passagierverkehr', 'Fracht Cargo', 'Fracht Express', 'Andere Kategorien']
+ySelList = ['Weather danger index', 'Temperature', 'Rain', 'Wind Speed']
+startDate = '2023-01-01'
+endDate = '2024-01-01'
 
 #######################################################################################################################
 # FAKE DATA
@@ -259,146 +243,93 @@ contClusters, countClusters = createGlobalData()
 
 
 app.layout = html.Div(
-    style={'height': '100vh', 'width': '100vw', 'overflow': 'hidden', 'margin': '0', 'padding': '0', 'box-sizing': 'border-box'},
+    style={'height': '97.5vh', 'width': '99.5vw', 'overflow': 'hidden', 'box-sizing': 'border-box', 'background-color': 'lightgray'},
     children=[
         # Top Banner
-        html.Div("Top Banner",style={
-                    'height': '10%',
-                    'width': '100%',
-                    'background-color': 'lightgray',
-                },),
+        html.Div(style={'height': '10%','width': '100%', 'background-color': 'lightgray'},
+                 children=html.Div(style={'height': '90%', 'width': '99.5%', 'background-color': 'white', 'box-sizing': 'border-box', 'border-bottom-left-radius': '30px', 'border-bottom-right-radius': '30px', 'margin-right': '10px', 'margin-left': '10px','display': 'flex', 'flex-direction': 'row'},
+                                   children=[
+                                        html.Div("Analysis of weather impact on flight frequency", style={'width': '92%', 'font-size': 'xxx-large', "margin-top": "10px", 'margin-left': '30px'}),
+                                        html.Div(children=[
+                                                dbc.Button("Info", id="open", n_clicks=0, style={'font-size': 'large'}),
+                                                dbc.Modal([
+                                                    dbc.ModalHeader(dbc.ModalTitle("Information")),
+                                                    dbc.ModalBody("This is the content of the modal"),
+                                                    dbc.ModalFooter(
+                                                    dbc.Button(
+                                                "Close", id="close", className="ms-auto", n_clicks=0
+                                                        )
+                                                    ),
+                                                ],
+                                                id="modal",
+                                                is_open=False,
+                                            ),
+                                        ], style={'width': '3%', 'margin-top': '20px'})
+                                   ]
+                )
+        ),
         # Left Side (Top Left and Bottom Left)
         html.Div(style={'width': '75%', 'float': 'left', 'height': '100%'}, children=[
 
             # Top Left (Main Frame)
             html.Div(
-                style={
-                    'height': '50%',
-                    'width': '100%',
-                    'background-color': 'lightgray',
-                },
+                style={'height': '50%','width': '100%','background-color': 'lightgray'},
                 children=html.Div([genFig(weatherData, flightData)], id="map")
             ),
-
             # Bottom Left (Analysis windows)
             html.Div(
-                style={
-                    'height': '42%',
-                    'width': '100%',
-                    'background-color': 'lightgray',
-                    'display': 'flex',
-                    'flex-direction': 'row',
-                },
+                style={'height': '42%', 'width': '100%', 'background-color': 'lightgray', 'display': 'flex', 'flex-direction': 'row'},
                 children=[
                     # Bottom Left, Left (Flight comparisons)
                     html.Div(
-                        style={
-                            'height': '100%',
-                            'width': '40%',
-                            'background-color': 'lightgray',
-                        },
+                        style={'height': '100%', 'width': '40%', 'background-color': 'lightgray',},
                         children=[
                             html.Div(
-                            style={
-                                'height': '80%',
-                                'width': '90%',
-
-                                'background-color': 'white',
-                                'box-sizing': 'border-box',
-                                'border-radius': '30px',
-                                'margin-top': '20px',
-                                'margin-right': '10px',
-                                'margin-left': '20px',
-                            },
+                            style={'height': '84%', 'width': '90%', 'background-color': 'white', 'box-sizing': 'border-box', 'border-radius': '30px', 'margin-top': '40px', 'margin-right': '10px', 'margin-left': '20px'},
                              children=[
-                                dcc.Graph(figure = genCompPlot(flightData), id="compPlot", style={'height': '100%','width': '90%','margin-left':'5%'}),
+                                dcc.Graph(figure = genCompPlot(flightData), id="compPlot", style={'height': '100%', 'width': '90%', 'margin-left':'5%'}),
                             ]),
                         ]
                     ),
                     # Bottom Left, Right (historical Analysis)
                     html.Div(
-                        style={
-                            'height': '100%',
-                            'width': '60%',
-                            'background-color': 'lightgray',
-                        },
+                        style={'height': '100%', 'width': '60%', 'background-color': 'lightgray',},
                         children=[
                             html.Div(
-                            style={
-                                'height': '80%',
-                                'width': '100%',
-
-                                'background-color': 'white',
-                                'box-sizing': 'border-box',
-                                'border-radius': '30px',
-                                'margin-top': '20px',
-                                'margin-right': '10px',
-                            },
+                            style={'height': '84%', 'width': '100%', 'background-color': 'white', 'box-sizing': 'border-box', 'border-radius': '30px', 'margin-top': '40px', 'margin-right': '10px',},
                              children=[
+                                 dcc.Graph(figure=genHistoPlot(startDate, endDate, xSelList[0], ySelList[2]), id="histoPlot", style={'height': '100%', 'width': '90%', 'margin-left': '5%'}),
                                 ]
                             ),
                         ]
                     ),
-
                 ]
             )
         ]),
-
         # Right Side
         html.Div(
-            style={
-                'width': '25%',
-                'float': 'left',
-                'height': '100%',
-                'background-color': 'lightgray',
-            },
+            style={'width': '25%', 'float': 'left', 'height': '100%', 'background-color': 'lightgray',},
             children=[
                 # Top (Choose Airport)
                 html.Div(
-                    style={
-                        'height': '12.2%',
-                        'width': '90%',
-                        'margin': '5%',
-                        'margin-top':'0px',
-                        'background-color': 'white',
-                        'box-sizing': 'border-box',
-                        'border-radius': '30px',
-                        'margin-right': '10px'
+                    style={'height': '12.2%', 'width': '96.5%', 'margin-left': '20px', 'margin-top': '0px', 'background-color': 'white', 'box-sizing': 'border-box', 'border-radius': '30px', 'margin-right': '10px'
                     },
                     children=[
-                        html.Div("Choose airport", style={'text-align': 'center', 'font-size': 'xx-large', "margin-bottom": "20px"}),
-                        dcc.Dropdown(airp['name'], 'EuroAirport Basel-Mulhouse-Freiburg Airport', id='airport-dropdown', searchable=True)
+                        html.Div("Choose airport", style={'text-align': 'center', 'font-size': 'xx-large', "margin-bottom": "20px", 'margin-left': '5px','margin-right': '5px',}),
+                        dcc.Dropdown(airp['name'], 'EuroAirport Basel-Mulhouse-Freiburg Airport', id='airport-dropdown', searchable=True, style={'margin-left': '6px', 'width':'98%'})
                     ]
                 ),
-
                 # Middle (Select Hotspot)
                 html.Div(
-                    style={
-                        'height': '34%',
-                        'width': '90%',
-                        'margin': '5%',
-                        'background-color': 'white',
-                        'box-sizing': 'border-box',
-                        'border-radius': '30px',
-                        'margin-right': '10%'
-                    },
+                    style={'height': '37.5%', 'width': '96.5%', 'margin-left': '20px',  'margin-top': '20px', 'background-color': 'white', 'box-sizing': 'border-box', 'border-radius': '30px', 'margin-right': '10%'},
                     children=[html.Div("Select Hotspot", style={'text-align': 'center', 'font-size': 'xx-large', "margin-bottom": "5px"}),
-                              dcc.Dropdown(["Continents", "Countries"], 'Continents', id='cont-dd'),
+                              dcc.Dropdown(["Continents", "Countries"], 'Continents', id='cont-dd', style={'margin-left': '6px', 'width':'98%'}),
                               html.Div([genMiniMap(contClusters, 1)], id="miniMapContainer")
                     ]
                 ),
                 # Botton
                 html.Div(
-                    style={
-                        'height': '34%',
-                        'width': '90%',
-                        'margin': '5%',
-                        'margin-top':'0px',
-                        'background-color': 'white',
-                        'box-sizing': 'border-box',
-                        'border-radius': '30px',
-                        'margin-right': '10px'
-                    },
+                    style={'height': '35.8%', 'width': '96.5%', 'margin-left': '20px',  'margin-top': '20px', 'background-color': 'white', 'box-sizing': 'border-box', 'border-radius': '30px', 'margin-right': '10px'},
                     children=[
                         html.Div("Overlay Control",style={'text-align': 'center', 'font-size': 'xx-large', "margin-bottom": "15px"}),
                         daq.BooleanSwitch(on=True, label={'label': "Weather overlay", 'style': {'font-size': 'x-large'}}, labelPosition="top"),
@@ -467,8 +398,19 @@ def update_Minioutput(value):
     return fig
 
 
+@app.callback(
+    Output("modal", "is_open"),
+    [Input("open", "n_clicks"), Input("close", "n_clicks")],
+    [State("modal", "is_open")],
+)
+def toggle_modal(n1, n2, is_open):
+    if n1 or n2:
+        return not is_open
+    return is_open
+
 # Starte die Dash-Anwendung
 if __name__ == '__main__':
+    app.server.static_folder = 'static'
     app.run_server(debug=True)
     
 

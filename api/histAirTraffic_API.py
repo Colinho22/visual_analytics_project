@@ -7,7 +7,7 @@ def getURL(startDate, endDate, offset):
     url = f'https://data.bs.ch/api/explore/v2.1/catalog/datasets/100078/records?where=date%3E%3D%22{startDate}%22AND%20date%3C%3D%22{endDate}%22&order_by=date&limit=100&offset={offset}'
     return url
 
-def getHistoricalFlightData(startDate, endDate):
+def getHistoricalFlightData(startDate, endDate, sum = False):
     offset = 0
     try:
         flightData = pd.read_json(getURL(startDate, endDate, offset))
@@ -28,12 +28,14 @@ def getHistoricalFlightData(startDate, endDate):
     for row in flightData.iterrows():
         date = row[1]['results']['date']
         mvt = row[1]['results']['mvt']
+        cat = row[1]['results']['kategorie']
 
-        dict = {'date': date, 'mvt': mvt}
+        dict = {'date': date,'cat':cat, 'mvt': mvt}
         data.append(dict)
 
     df = pd.DataFrame(data)
-    df = df.groupby(['date']).agg({'mvt': 'sum'}).reset_index()
+    if sum == True:
+        df = df.groupby(['date']).agg({'mvt': 'sum'}).reset_index()
 
     return df
 
@@ -41,4 +43,5 @@ def getHistoricalFlightData(startDate, endDate):
 
 #startDate = '2022-01-01'
 #endDate = '2022-04-01'
-#df = getHistoricalFlightData(startDate, endDate)
+#df = getHistoricalFlightData(startDate, endDate, sum=True)
+#print(df)

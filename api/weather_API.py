@@ -40,6 +40,24 @@ def getIndex(weatherData):
     out = (index / 10)+0.1
     return out  # Range von 0.1 bis 0.6
 
+def getContinuousIndex(weatherData):
+    # Temperature completely irrelevant --> for this: <0 little danger, >30 little danger
+    # Wind <10 irrelevant 20 medium 30 relevant
+    # Rain 4  mild, 10 strong, >10 extreme
+    index = 0
+    if weatherData['temperature_2m'] > 20:
+        index += (weatherData['temperature_2m'] - 20)
+    if weatherData['temperature_2m'] < 10:
+        index += (weatherData['temperature_2m'] - 10) * (-1)
+
+    if weatherData['wind_speed_10m'] > 10:
+        index += (weatherData['wind_speed_10m'] - 10)
+
+    if weatherData['rain'] > 4:
+        index += (weatherData['rain'] - 4)
+
+
+    return index  # Range von 0.1 bis 0.6
 
 def getWeatherDangerIndex(lat, long):
     weatherOut = getWeather(lat, long, temperature2=True, windSpeed10=True, rain=True)
@@ -59,10 +77,11 @@ def getHistWeatherDangerIndex(lat, long, startDate, endDate):
     data = pd.DataFrame(zipped, columns=['date','temperature_2m','rain','wind_speed_10m'])
     indices = []
     for row in data.iterrows():
-        index = getIndex(row[1])
+        #index = getIndex(row[1])
+        index = getContinuousIndex(row[1])
         indices.append(index)
     data['index'] = indices
-    data = data[['date', 'index']]
+    #data = data[['date','index']]
     return data
 
 
@@ -73,4 +92,7 @@ def getHistWeatherDangerIndex(lat, long, startDate, endDate):
 #data = getHistWeatherDangerIndex(46.84986, 9.53287, startDate, endDate)
 
 
+#weatherData = {'temperature_2m': 15, 'wind_speed_10m': 0, 'rain': 10}
+#out = getContinuousIndex(weatherData)
+#print(out)
 
