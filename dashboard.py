@@ -1,7 +1,7 @@
 import dash
+import dateutil
 from dash import dcc, html, callback
 from dash.dependencies import Input, Output, State
-import dash_daq as daq
 import dash_bootstrap_components as dbc
 import airportsdata
 import pandas as pd
@@ -10,8 +10,7 @@ import dash_leaflet as dl
 import dash_leaflet.express as dlx
 from sklearn.cluster import KMeans
 import plotly.express as px
-import sys
-
+from datetime import date, timedelta
 
 import gunicorn
 
@@ -19,24 +18,6 @@ from api import weather_API as w_Api
 from api import airTraffic_API as a_Api
 from api import histAirTraffic_API as h_Api
 from api import random_API as r_Api
-
-
-#app = dash.Dash(__name__)
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME])
-server = app.server
-
-#Get Airports Data
-airports = airportsdata.load()
-airp = pd.DataFrame.from_dict(airports)
-airp = airp.drop(index=(['icao', 'iata', 'subd', 'elevation', 'tz', 'lid']))
-airp = airp.dropna()
-airp = airp.T
-
-#Init lat und lon
-lat, lon = 5,5
-static_lat, static_lon = 5,5
-AMOUNT = 100
-PLANE_CATEGORIES = ['Commercial Airplane','No ADS-B Emitter Category Information','Light (< 15500 lbs)','Small (15500 to 75000 lbs)','Large (75000 to 300000 lbs)','High Vortex Large (aircraft such as B-757)','Heavy (> 300000 lbs)','High Performance (> 5g acceleration and 400 kts)','Rotorcraft','Glider / sailplane','Lighter-than-air','Parachutist / Skydiver','Ultralight / hang-glider / paraglider','Reserved','Unmanned Aerial Vehicle','Space / Trans-atmospheric vehicle','Surface Vehicle – Emergency Vehicle','Surface Vehicle – Service Vehicle','Point Obstacle (includes tethered balloons)','Cluster Obstacle','Line Obstacle']
 
 def createData(center_lat, center_lon):
     #offset = 3 #ganze Schweiz
@@ -125,7 +106,7 @@ def createGlobalData():
     #geojson = dlx.dicts_to_geojson(flightData)
 
     ####################################################################################################################
-    #Als Alternative wird das File flobalGeoJson geladen, welches aus demselben globalen Aufruf enstand
+    #Als Alternative wird das File globalGeoJson geladen, welches aus demselben globalen Aufruf enstand
     ####################################################################################################################
     import geojson
     with open('assets/globalGeojson') as f:
@@ -192,12 +173,15 @@ def generate_grid(weatherData):
 def genCompPlot(flightData):
     flightData = pd.DataFrame.from_dict(flightData)
     flightData = flightData.rename(columns={"alt": "Altitude", "vel": "Velocity", "cat": "Category"})
-    fig = px.scatter(flightData, x="Altitude", y="Velocity", color='Category', hover_name= 'callsign', title="Live Flight comparisons")
+    fig = px.scatter(flightData, x="Altitude", y="Velocity", color='Category', hover_name= 'callsign')
     fig.update_layout(margin=dict(l=0, r=10, t=35, b=0))
     fig.update_coloraxes(showscale=False)
     return fig
 
 def genHistoPlot(startDate, endDate, x_selection, y_selection):
+    #startDate = date.strftime(startDate, "%Y-%m-%d")
+    #endDate = date.strftime(endDate, "%Y-%m-%d")
+
     if x_selection == "Summe":
         histFlightData = h_Api.getHistoricalFlightData(startDate, endDate, sum=True)
     elif x_selection == "Alle":
@@ -213,33 +197,56 @@ def genHistoPlot(startDate, endDate, x_selection, y_selection):
     merge = histFlightData.merge(histWeatherData, on='date')
     merge = merge.rename(columns={"wind_speed_10m": "Wind Speed", "rain": "Rain", "temperature_2m": "Temperature", "cat": "Category", "mvt": "Plane movements", "index": "Weather danger index", "date": "Date"})
 
-    fig = px.scatter(merge, x="Plane movements", y=y_selection, hover_name= 'Date', title="Flight and weather comparison in EuroAirport Basel-Mulhouse-Freiburg Airport")
+    fig = px.scatter(merge, x="Plane movements", y=y_selection, hover_name= 'Date')
     if x_selection == "Alle":
-        fig = px.scatter(merge, x="Plane movements", y=y_selection, color= 'Category', hover_name='Date',title="Flight and weather comparison in EuroAirport Basel-Mulhouse-Freiburg Airport")
+        fig = px.scatter(merge, x="Plane movements", y=y_selection, color= 'Category', hover_name='Date')
     else:
-        fig = px.scatter(merge, x="Plane movements", y=y_selection, hover_name='Date',title="Flight and weather comparison in EuroAirport Basel-Mulhouse-Freiburg Airport")
+        fig = px.scatter(merge, x="Plane movements", y=y_selection, hover_name='Date')
     fig.update_layout(margin=dict(l=0, r=10, t=35, b=0))
     #fig.show()
     return fig
 
+# Start App
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME])
+server = app.server
 
+#Get Airports Data
+airports = airportsdata.load()
+airp = pd.DataFrame.from_dict(airports)
+airp = airp.drop(index=(['icao', 'iata', 'subd', 'elevation', 'tz', 'lid']))
+airp = airp.dropna()
+airp = airp.T
+
+
+# Boolean for switiching to Random Data
+RANDOM_DATA = False
+# Amount of Data Points (Only relevant when RANDOM_DATA = True
+AMOUNT = 100
+
+# Start Pos for Map
 lat, lon = getLatLongFromName('EuroAirport Basel-Mulhouse-Freiburg Airport')
 static_lat, static_lon  = getLatLongFromName('EuroAirport Basel-Mulhouse-Freiburg Airport')
+
+# Set Plane Categories for Main Map
+PLANE_CATEGORIES = ['Commercial Airplane','No ADS-B Emitter Category Information','Light (< 15500 lbs)','Small (15500 to 75000 lbs)','Large (75000 to 300000 lbs)','High Vortex Large (aircraft such as B-757)','Heavy (> 300000 lbs)','High Performance (> 5g acceleration and 400 kts)','Rotorcraft','Glider / sailplane','Lighter-than-air','Parachutist / Skydiver','Ultralight / hang-glider / paraglider','Reserved','Unmanned Aerial Vehicle','Space / Trans-atmospheric vehicle','Surface Vehicle – Emergency Vehicle','Surface Vehicle – Service Vehicle','Point Obstacle (includes tethered balloons)','Cluster Obstacle','Line Obstacle']
+
+# Options for Radio Buttons in Histo-Plot
 xSelList = ['Summe', 'Alle', 'Passagierverkehr', 'Fracht Cargo', 'Fracht Express', 'Andere Kategorien']
 ySelList = ['Weather danger index', 'Temperature', 'Rain', 'Wind Speed']
-startDate = '2023-01-01'
-endDate = '2024-01-01'
 
-#######################################################################################################################
-# FAKE DATA
-#######################################################################################################################
-weatherData, flightData =createData(lat, lon)
-#weatherData, flightData =createFakeData(lat, lon)
-#######################################################################################################################
-# FAKE DATA
-#######################################################################################################################
+# Dates for DatePicker in Histo-Plot
+static_endDate = date.today()
+static_startDate = (static_endDate - timedelta(days=30)).strftime("%Y-%m-%d")
+static_endDate = static_endDate.strftime("%Y-%m-%d")
+static_minStartDate = date(2019,7,1).strftime("%Y-%m-%d")
+
+# Create Start Data for MainMap and MiniMap
+if RANDOM_DATA:
+    weatherData, flightData =createFakeData(lat, lon)
+else:
+    weatherData, flightData = createData(lat, lon)
 contClusters, countClusters = createGlobalData()
-#grid = generate_grid(weatherData)
+
 
 
 app.layout = html.Div(
@@ -276,29 +283,37 @@ app.layout = html.Div(
                 style={'height': '50%','width': '100%','background-color': 'lightgray'},
                 children=html.Div([genFig(weatherData, flightData)], id="map")
             ),
-            # Bottom Left (Analysis windows)
+            # Bottom Left
             html.Div(
                 style={'height': '42%', 'width': '100%', 'background-color': 'lightgray', 'display': 'flex', 'flex-direction': 'row'},
                 children=[
-                    # Bottom Left, Left (Flight comparisons)
-                    html.Div(
-                        style={'height': '100%', 'width': '40%', 'background-color': 'lightgray',},
-                        children=[
-                            html.Div(
-                            style={'height': '84%', 'width': '90%', 'background-color': 'white', 'box-sizing': 'border-box', 'border-radius': '30px', 'margin-top': '40px', 'margin-right': '10px', 'margin-left': '20px'},
-                             children=[
-                                dcc.Graph(figure = genCompPlot(flightData), id="compPlot", style={'height': '100%', 'width': '90%', 'margin-left':'5%'}),
-                            ]),
-                        ]
-                    ),
                     # Bottom Left, Right (historical Analysis)
                     html.Div(
-                        style={'height': '100%', 'width': '60%', 'background-color': 'lightgray',},
+                        style={'height': '100%', 'width': '100%', 'background-color': 'lightgray'},
                         children=[
                             html.Div(
-                            style={'height': '84%', 'width': '100%', 'background-color': 'white', 'box-sizing': 'border-box', 'border-radius': '30px', 'margin-top': '40px', 'margin-right': '10px',},
+                            style={'height': '84%', 'width': '99%', 'background-color': 'white', 'box-sizing': 'border-box', 'border-radius': '30px', 'margin-top': '40px', 'margin-right': '10px', 'margin-left': '10px','text-align': 'center', 'font-size': 'xx-large', "margin-bottom": "5px"},
                              children=[
-                                 dcc.Graph(figure=genHistoPlot(startDate, endDate, xSelList[0], ySelList[2]), id="histoPlot", style={'height': '100%', 'width': '90%', 'margin-left': '5%'}),
+                                "Flight and weather comparison in EuroAirport Basel-Mulhouse-Freiburg Airport",
+                                 html.Div(style={'display': 'flex', 'flex-direction': 'row'},
+                                 children=[
+                                     html.Div(
+                                        children=[
+                                        html.Div("Date picker", style={'text-align': 'left', 'font-size': 'large', 'font-weight':'bold',"margin-bottom": "2px", "margin-left": "20px"}),
+                                        dcc.DatePickerRange(start_date=static_startDate, end_date=static_endDate,display_format='DD MMM YYYY', min_date_allowed=static_minStartDate, max_date_allowed=static_endDate, style={"margin-bottom": "10px"}, id='histoDate'),
+                                        html.Div(style={'display': 'flex', 'flex-direction': 'row'},children=[
+                                            html.Div(children=[
+                                                html.Div("X-Axis control", style={'text-align': 'left', 'font-size': 'large', 'font-weight':'bold',"margin-bottom": "2px", "margin-left": "20px", "margin-top": "5px"}),
+                                                dcc.RadioItems(xSelList, xSelList[0], style={'text-align': 'left', 'font-size': 'medium', "margin-left": "20px"}, id='histoXaxis'),]),
+                                            html.Div(children=[
+                                                html.Div("Y-Axis control", style={'text-align': 'left', 'font-size': 'large', 'font-weight':'bold', "margin-bottom": "2px", "margin-left": "20px", "margin-top": "5px"}),
+                                                dcc.RadioItems(ySelList, ySelList[0], style={'text-align': 'left', 'font-size': 'medium', "margin-left": "20px"}, id='histoYaxis'),]),
+                                        ])
+                                     ]),
+                                     html.Div(children=[
+                                        dcc.Graph(figure=genHistoPlot(static_startDate, static_endDate, xSelList[0], ySelList[0]), id="histoPlot", style={'height': '300px', 'width':'1250px', "margin-left": "50px"}),
+                                     ])
+                                ])
                                 ]
                             ),
                         ]
@@ -327,13 +342,12 @@ app.layout = html.Div(
                               html.Div([genMiniMap(contClusters, 1)], id="miniMapContainer")
                     ]
                 ),
-                # Botton
+                # Botton (Flight comparisons)
                 html.Div(
-                    style={'height': '35.8%', 'width': '96.5%', 'margin-left': '20px',  'margin-top': '20px', 'background-color': 'white', 'box-sizing': 'border-box', 'border-radius': '30px', 'margin-right': '10px'},
+                    style={'height': '35.8%', 'width': '96.5%', 'margin-left': '20px',  'margin-top': '20px', 'background-color': 'white', 'box-sizing': 'border-box', 'border-radius': '30px', 'margin-right': '10px','text-align': 'center', 'font-size': 'xx-large', "margin-bottom": "5px"},
                     children=[
-                        html.Div("Overlay Control",style={'text-align': 'center', 'font-size': 'xx-large', "margin-bottom": "15px"}),
-                        daq.BooleanSwitch(on=True, label={'label': "Weather overlay", 'style': {'font-size': 'x-large'}}, labelPosition="top"),
-                        daq.BooleanSwitch(on=True, label={'label': "Air traffic overlay", 'style': {'font-size': 'x-large'}}, labelPosition="top")
+                        "Live Flight comparisons",
+                        dcc.Graph(figure = genCompPlot(flightData), id="compPlot", style={'height':'83%','width': '90%', 'margin-left':'5%'})
                     ]
                 )
             ]
@@ -350,19 +364,14 @@ app.layout = html.Div(
 )
 def updateMapBasedOnDropdown(value):
     lat, lon = getLatLongFromName(value)
-    #######################################################################################################################
-    # FAKE DATA
-    #######################################################################################################################
-    weatherData, flightData =createData(lat, lon)
-    #weatherData, flightData = createFakeData(lat, lon)
-    #######################################################################################################################
-    # FAKE DATA
-    #######################################################################################################################
+    if RANDOM_DATA:
+        weatherData, flightData = createFakeData(lat, lon)
+    else:
+        weatherData, flightData =createData(lat, lon)
     fig = [genFig(weatherData, flightData)]
     grid = generate_grid(weatherData)
     view = dict(center=[lat, lon], zoom=9, transition="flyTo")
     return fig, grid, view
-
 
 @callback(
     Output("map", "children", allow_duplicate=True),
@@ -373,14 +382,10 @@ def updateMapBasedOnDropdown(value):
 )
 def updateMapBasedOnMiniMapClick(click_data):
     lon, lat= click_data['geometry']['coordinates']
-    #######################################################################################################################
-    # FAKE DATA
-    #######################################################################################################################
-    weatherData, flightData =createData(lat, lon)
-    #weatherData, flightData = createFakeData(lat, lon)
-    #######################################################################################################################
-    # FAKE DATA
-    #######################################################################################################################
+    if RANDOM_DATA:
+        weatherData, flightData = createFakeData(lat, lon)
+    else:
+        weatherData, flightData =createData(lat, lon)
     fig = [genFig(weatherData, flightData)]
     grid = generate_grid(weatherData)
     view = dict(center=[lat, lon], zoom=9, transition="flyTo")
@@ -397,7 +402,6 @@ def update_Minioutput(value):
         fig = genMiniMap(countClusters, 2)
     return fig
 
-
 @app.callback(
     Output("modal", "is_open"),
     [Input("open", "n_clicks"), Input("close", "n_clicks")],
@@ -407,6 +411,18 @@ def toggle_modal(n1, n2, is_open):
     if n1 or n2:
         return not is_open
     return is_open
+
+@callback(
+    Output('histoPlot', 'figure'),
+    Input('histoDate', 'start_date'),
+    Input('histoDate', 'end_date'),
+    Input('histoXaxis', 'value'),
+    Input('histoYaxis', 'value'),
+)
+def update_figure(start_date, end_date, xaxis, yaxis):
+    fig = genHistoPlot(start_date, end_date, xaxis, yaxis)
+    return fig
+
 
 # Starte die Dash-Anwendung
 if __name__ == '__main__':
