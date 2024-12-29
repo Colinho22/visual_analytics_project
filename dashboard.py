@@ -203,8 +203,31 @@ def genHistoPlot(startDate, endDate, x_selection, y_selection):
     else:
         fig = px.scatter(merge, x="Plane movements", y=y_selection, hover_name='Date')
     fig.update_layout(margin=dict(l=0, r=10, t=35, b=0))
+    fig.update_layout(paper_bgcolor='azure')
     #fig.show()
     return fig
+
+def returnModalText():
+    modalText = '''
+    This dashboard shows the impact of the weather on the current and historical aircraft travel.
+    
+    ## Live Data
+    The live data is displayed in the top left map, with the overlay that displays the severity of the weather in that area.
+    It can be manipulated by dragging with the middle-mouse button, zooming with the mouse wheel or a specific area can be selected by shift+dragging the mouse over the screen. 
+    It is also possible to deselect overlays by clicking on the map symbol in the top right corner.
+    
+    All tools to further manipulate or analyse the live data are signaled by white boxes.
+    In the top right corner is the "Choose Airport" menu, that lets you fly to a specified airport. 
+    Below it is the "Select Hotspot" menu. It displays a minimap, that shows the most active clusters of air traffic. It can be zoomed in to show more specific clusters by selecting "countries" in the dropdown menu.
+    In the bottom right is the analysis of all currently displayed aircrafts. It shows their velocity in comparison to their altitude while also displaying the callsign and category of the plane when hovering over it. 
+    
+    ## Historical Data
+    The historical data is displayed in the bottem left corner in the lightblue box. 
+    It shows a comparison of weather data and flight data at the EuroAirport Basel-Mulhouse-Freiburg.
+    Each dot in the graph represents a day in the selected timeframe. The type of comparison can be adjusted by changing the radio-buttons on the left-hand side. 
+    Its therefore possible to show the sum of all air-traffic in a day compared to the rainfall of said day or another example would be to show all Cargo-air-traffic compared with the same weather index used in the live map. 
+    '''
+    return modalText
 
 # Start App
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME])
@@ -232,6 +255,7 @@ PLANE_CATEGORIES = ['Commercial Airplane','No ADS-B Emitter Category Information
 
 # Options for Radio Buttons in Histo-Plot
 xSelList = ['Summe', 'Alle', 'Passagierverkehr', 'Fracht Cargo', 'Fracht Express', 'Andere Kategorien']
+xSelListEnglish = [{'label':'Sum', 'value':xSelList[0]}, {'label':'All', 'value':xSelList[1]}, {'label':'Passenger planes', 'value':xSelList[2]}, {'label':'Cargo planes', 'value':xSelList[3]}, {'label':'Cargo Express', 'value':xSelList[4]},{'label':'others', 'value':xSelList[5]}]
 ySelList = ['Weather danger index', 'Temperature', 'Rain', 'Wind Speed']
 
 # Dates for DatePicker in Histo-Plot
@@ -247,8 +271,7 @@ else:
     weatherData, flightData = createData(lat, lon)
 contClusters, countClusters = createGlobalData()
 
-
-
+# Generate App Layout
 app.layout = html.Div(
     style={'height': '97.5vh', 'width': '99.5vw', 'overflow': 'hidden', 'box-sizing': 'border-box', 'background-color': 'lightgray'},
     children=[
@@ -261,7 +284,7 @@ app.layout = html.Div(
                                                 dbc.Button("Info", id="open", n_clicks=0, style={'font-size': 'large'}),
                                                 dbc.Modal([
                                                     dbc.ModalHeader(dbc.ModalTitle("Information")),
-                                                    dbc.ModalBody("This is the content of the modal"),
+                                                    dbc.ModalBody(dcc.Markdown(returnModalText())),
                                                     dbc.ModalFooter(
                                                     dbc.Button(
                                                 "Close", id="close", className="ms-auto", n_clicks=0
@@ -292,9 +315,9 @@ app.layout = html.Div(
                         style={'height': '100%', 'width': '100%', 'background-color': 'lightgray'},
                         children=[
                             html.Div(
-                            style={'height': '84%', 'width': '99%', 'background-color': 'white', 'box-sizing': 'border-box', 'border-radius': '30px', 'margin-top': '40px', 'margin-right': '10px', 'margin-left': '10px','text-align': 'center', 'font-size': 'xx-large', "margin-bottom": "5px"},
+                            style={'height': '84%', 'width': '99%', 'background-color': 'azure', 'box-sizing': 'border-box', 'border-radius': '30px', 'margin-top': '40px', 'margin-right': '10px', 'margin-left': '10px','text-align': 'center', 'font-size': 'xx-large', "margin-bottom": "5px"},
                              children=[
-                                "Flight and weather comparison in EuroAirport Basel-Mulhouse-Freiburg Airport",
+                                "Air-traffic and weather comparison in the EuroAirport Basel-Mulhouse-Freiburg",
                                  html.Div(style={'display': 'flex', 'flex-direction': 'row'},
                                  children=[
                                      html.Div(
@@ -304,7 +327,7 @@ app.layout = html.Div(
                                         html.Div(style={'display': 'flex', 'flex-direction': 'row'},children=[
                                             html.Div(children=[
                                                 html.Div("X-Axis control", style={'text-align': 'left', 'font-size': 'large', 'font-weight':'bold',"margin-bottom": "2px", "margin-left": "20px", "margin-top": "5px"}),
-                                                dcc.RadioItems(xSelList, xSelList[0], style={'text-align': 'left', 'font-size': 'medium', "margin-left": "20px"}, id='histoXaxis'),]),
+                                                dcc.RadioItems(value= xSelList[0], options=xSelListEnglish,  style={'text-align': 'left', 'font-size': 'medium', "margin-left": "20px"}, id='histoXaxis'),]),
                                             html.Div(children=[
                                                 html.Div("Y-Axis control", style={'text-align': 'left', 'font-size': 'large', 'font-weight':'bold', "margin-bottom": "2px", "margin-left": "20px", "margin-top": "5px"}),
                                                 dcc.RadioItems(ySelList, ySelList[0], style={'text-align': 'left', 'font-size': 'medium', "margin-left": "20px"}, id='histoYaxis'),]),
@@ -359,6 +382,7 @@ app.layout = html.Div(
     Output('map', 'children', allow_duplicate=True),
     Output("grid-layer", "children", allow_duplicate=True),
     Output("mapCore", "viewport", allow_duplicate=True),
+    Output("compPlot", "figure", allow_duplicate=True),
     Input('airport-dropdown', 'value'),
     prevent_initial_call=True,
 )
@@ -371,12 +395,14 @@ def updateMapBasedOnDropdown(value):
     fig = [genFig(weatherData, flightData)]
     grid = generate_grid(weatherData)
     view = dict(center=[lat, lon], zoom=9, transition="flyTo")
-    return fig, grid, view
+    compFigure = genCompPlot(flightData)
+    return fig, grid, view, compFigure
 
 @callback(
     Output("map", "children", allow_duplicate=True),
     Output("grid-layer", "children", allow_duplicate=True),
     Output("mapCore", "viewport", allow_duplicate=True),
+    Output("compPlot", "figure", allow_duplicate=True),
     Input("geojson_layer", "clickData"),
     prevent_initial_call=True,
 )
@@ -389,7 +415,8 @@ def updateMapBasedOnMiniMapClick(click_data):
     fig = [genFig(weatherData, flightData)]
     grid = generate_grid(weatherData)
     view = dict(center=[lat, lon], zoom=9, transition="flyTo")
-    return fig, grid, view
+    compFigure = genCompPlot(flightData)
+    return fig, grid, view, compFigure
 
 @callback(
     Output('miniMapContainer', 'children'),
@@ -427,43 +454,5 @@ def update_figure(start_date, end_date, xaxis, yaxis):
 # Starte die Dash-Anwendung
 if __name__ == '__main__':
     app.server.static_folder = 'static'
-    app.run_server(debug=True)
-    
+    app.run_server(debug=False)
 
-
-
-
-
-'''
-
-def genFig(weatherData, flightData):
-    # Funktion zur Erstellung eines individuellen Icons für die Flugzeuge
-    def create_airplane_marker(feature):
-        # Setze den Kurswinkel basierend auf dem 'bearing'-Wert im Feature (falls vorhanden)
-        bearing = feature['dir']  # Default-Winkel ist 0 Grad, falls 'bearing' fehlt
-        icon = {
-            "iconUrl": "/assets/airplane.svg",  # Pfad zum Flugzeugsymbol
-            "iconSize": [32, 32],  # Größe des Icons
-            "iconAnchor": [16, 16],  # Mittelpunkt des Icons
-            "popupAnchor": [0, -16],  # Position für das Popup
-            "rotateAngle": bearing  # Rotation basierend auf Flugrichtung
-        }
-        return dl.Marker(position=feature["geometry"]["coordinates"][::-1], icon=icon)
-
-    # Konvertiere flightData zu GeoJSON und passe die Marker und Rotation an
-    geojson_data = dlx.dicts_to_geojson(flightData)
-
-    # Erstelle die Map-Komponente mit dem angepassten Icon
-    map = dl.Map([
-        dl.TileLayer(),
-        dl.GeoJSON(
-            data=geojson_data,
-            cluster=True,
-            zoomToBoundsOnClick=True,
-            zoomToBounds=True,
-            #options=dict(pointToLayer=create_airplane_marker),  # Verwende benutzerdefinierte Marker
-        ),
-    ], center=(lat, lon), zoom=11, style={'height': '80vh'})
-
-    return map
-'''
