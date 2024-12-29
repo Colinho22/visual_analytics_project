@@ -101,16 +101,23 @@ def createGlobalData():
     #Bei wiederholtem Einsazt der gratis API kommt es sehr schnell zu zu hohen Abfragezahlen und somit zum Unterbruch
     ####################################################################################################################
 
+    # Normal Data
     #-90 to 90 for latitude and -180 to 180 for longitude
     #flightData = a_Api.getAirTrafficDicts(-90, -180, 90, 180)
+    #geojson = dlx.dicts_to_geojson(flightData)
+
+    # Random Data
+    #weatherData, flightData = createFakeData(lat, lon)
     #geojson = dlx.dicts_to_geojson(flightData)
 
     ####################################################################################################################
     #Als Alternative wird das File globalGeoJson geladen, welches aus demselben globalen Aufruf enstand
     ####################################################################################################################
+
     import geojson
     with open('assets/globalGeojson') as f:
         geojson = geojson.load(f)
+
     ####################################################################################################################
 
 
@@ -204,6 +211,7 @@ def genHistoPlot(startDate, endDate, x_selection, y_selection):
         fig = px.scatter(merge, x="Plane movements", y=y_selection, hover_name='Date')
     fig.update_layout(margin=dict(l=0, r=10, t=35, b=0))
     fig.update_layout(paper_bgcolor='azure')
+    fig.update_xaxes(range=[0, 400])
     #fig.show()
     return fig
 
@@ -241,7 +249,7 @@ airp = airp.dropna()
 airp = airp.T
 
 
-# Boolean for switiching to Random Data
+# Boolean for switching to Random Data
 RANDOM_DATA = False
 # Amount of Data Points (Only relevant when RANDOM_DATA = True
 AMOUNT = 100
